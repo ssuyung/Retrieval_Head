@@ -41,7 +41,7 @@ from transformers import AutoTokenizer, AutoConfig
 import sys
 import random
 sys.path.append("./faiss_attn/")
-from src.modeling_llama import LlamaForCausalLM, LlamaConfig
+from src.new_modeling_llama import LlamaForCausalLM, LlamaConfig
 from src.modeling_qwen2 import Qwen2ForCausalLM
 from src.modeling_mixtral import MixtralForCausalLM
 from src.modeling_mistral import MistralForCausalLM
