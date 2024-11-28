@@ -555,11 +555,11 @@ if __name__ == "__main__":
 
     if(args.model_path is not None):
         assert(args.model_name is None)
-        model_name = args.model_path
+        args.model_name = args.model_path
     else: 
         assert(args.model_name is not None)
 
-    ht = LLMNeedleHaystackTester(model_name=model_name, 
+    ht = LLMNeedleHaystackTester(model_name=args.model_name, 
                                  model_name_suffix=args.model_name_suffix,
                                  model_provider=args.model_provider,
                                  save_contexts=True,
