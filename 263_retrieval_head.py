@@ -36,9 +36,6 @@ class Args(argparse.Namespace):
   model_name_suffix=None
   model_provider="LLaMA"
 
-from huggingface_hub import notebook_login
-notebook_login()
-
 args = Args()
 
 model_name = args.model_path
