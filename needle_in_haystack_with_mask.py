@@ -168,6 +168,7 @@ class LLMNeedleHaystackTester:
             raise ValueError("document_depth_percent_interval_type must be either None, 'linear' or 'sigmoid'. If you'd like your own distribution give a list of ints in via document_depth_percent_intervals")
         
         self.model_name = model_name
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if(self.model_provider not in ["OpenAI", "Anthropic"]):
             self.enc = AutoTokenizer.from_pretrained(model_name)
@@ -193,7 +194,7 @@ class LLMNeedleHaystackTester:
                     )
             else:
                 self.model_to_test = LlamaForCausalLM.from_pretrained(model_name,
-                    use_flash_attention_2="flash_attention_2", torch_dtype=torch.bfloat16,device_map='auto').eval()
+                     torch_dtype=torch.bfloat16,device_map='auto').to(device).eval()
             if 'llama-2-7b-80k' in self.model_version:
                 scaling_factor = 10
                 reset_rope(self.model_to_test, model_max_train_len=81920, scaling_factor=scaling_factor)
@@ -338,8 +339,8 @@ class LLMNeedleHaystackTester:
         self.real_needle = "eat a sandwich and sit in Dolores Park on a sunny day"
         #self.prompt_ids = torch.concat([context_ids, question_ids], dim=1)[0, :]
         self.prompt_ids = input_ids[0, :]
-        if not self.multi_gpus:
-            input_ids = input_ids.to(self.model_to_test.device)
+        # if not self.multi_gpus:
+        input_ids = input_ids.to(self.model_to_test.device)
 
         self.needle_start, self.needle_end = self.find_needle_idx(self.real_needle)
         with torch.no_grad():
