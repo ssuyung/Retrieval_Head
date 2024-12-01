@@ -130,47 +130,18 @@ class LLMNeedleHaystackTester:
         
         self.model_name = model_name
 
-        # if(self.model_provider not in ["OpenAI", "Anthropic"]):
         self.enc = AutoTokenizer.from_pretrained(model_name)
         print("loading from %s" % model_name)
         config = AutoConfig.from_pretrained(model_name)
         self.layer_num, self.head_num = config.num_hidden_layers, config.num_attention_heads
         print(f"layer number: {self.layer_num}, head number {self.head_num}")
-        # if "Qwen" in self.model_version:
-        #     self.model_to_test = Qwen2ForCausalLM.from_pretrained(
-        #            model_name,torch_dtype="auto",device_map='auto',use_flash_attention_2="flash_attention_2"
-        #         )
-        # elif "Mixtral" in self.model_version:
-        #     self.model_to_test = MixtralForCausalLM.from_pretrained(
-        #            model_name,torch_dtype="auto",device_map='auto',use_flash_attention_2="flash_attention_2",trust_remote_code=True,
-        #         )
-        # elif "Mistral" in self.model_version:
-        #     self.model_to_test = MistralForCausalLM.from_pretrained(
-        #            model_name,torch_dtype="auto",device_map='auto',use_flash_attention_2="flash_attention_2",trust_remote_code=True,
-        #         )
-        # elif "Phi3" in self.model_version:
-        #     self.model_to_test = Phi3ForCausalLM.from_pretrained(
-        #            model_name,torch_dtype="auto",device_map='auto',use_flash_attention_2="flash_attention_2",trust_remote_code=True,
-        #         )
-        # else:
+
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_to_test = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16  # Use bfloat16 for better memory efficiency
         ).to(device).eval()
         print("Model's device: ", self.model_to_test.device) 
-        # self.model_to_test = LlamaForCausalLM.from_pretrained(model_name,rope_scaling={"type": "linear"},
-        #     use_flash_attention_2="flash_attention_2", torch_dtype=torch.bfloat16,device_map='auto').eval()
-        # if 'llama-2-7b-80k' in self.model_version:
-        #     scaling_factor = 10
-        #     reset_rope(self.model_to_test, model_max_train_len=81920, scaling_factor=scaling_factor)
-
-        # else: 
-        #     self.model_to_test = OpenAI(api_key=openai_api_key)
-        #     if(self.model_provider == "OpenAI"):
-        #         self.enc = tiktoken.encoding_for_model(self.model_name)
-        #     elif(self.model_provider == "Anthropic"):
-        #         self.enc = Anthropic().get_tokenizer()
 
         self.model_to_test_description = model_name
         
