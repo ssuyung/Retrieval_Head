@@ -139,7 +139,8 @@ class LLMNeedleHaystackTester:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model_to_test = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16  # Use bfloat16 for better memory efficiency
+            torch_dtype=torch.bfloat16,  # Use bfloat16 for better memory efficiency
+            attn_implementation="eager"
         ).to(device).eval()
         print("Model's device: ", self.model_to_test.device) 
 
@@ -158,7 +159,7 @@ class LLMNeedleHaystackTester:
                 stable_block_list =  json.loads(file.readline())
             stable_block_list = [(l[0], np.mean(l[1])) for l in stable_block_list.items()]
             stable_block_list = sorted(stable_block_list, key=lambda x: x[1], reverse=True) 
-            self.block_list = [[int(ll) for ll in l[0].split("-")] for l in stable_block_list][:100]
+            self.block_list = [[int(ll) for ll in l[0].split("-")] for l in stable_block_list][:self.mask_topk]
             if self.mask_topk > 0:
                 print(f"masking out top {self.mask_topk} retrieval heads")
             else:
@@ -166,6 +167,12 @@ class LLMNeedleHaystackTester:
         else:
             self.block_list = []
 
+        blk_ls = {}
+        for b in self.block_list:
+            if b[0] in blk_ls: blk_ls[b[0]].append(b[1])
+            else: blk_ls[b[0]] = [b[1]]
+        for k, v in blk_ls.items():
+            self.model_to_test.model.layers[k].self_attn = CustomLlamaAttention(config, layer_idx=k, block_list=v).to(device)
     def logistic(self, x, L=100, x0=50, k=.1):
         if x == 0:
             return 0
@@ -214,7 +221,7 @@ class LLMNeedleHaystackTester:
         for step_i in range(decode_len):
             inp = inp.view(1, 1)
             outputs = self.model_to_test(input_ids=inp, past_key_values=past_kv, use_cache=True, \
-                 output_attentions=False, block_list=block_list)
+                 output_attentions=False)
             past_kv = outputs.past_key_values
             inp = outputs.logits[0, -1].argmax()
             step_token = self.enc.convert_ids_to_tokens(inp.item())

@@ -29,6 +29,7 @@ class CustomLlamaAttention(LlamaSdpaAttention):
         self.num_key_value_heads = config.num_key_value_heads
         self.num_key_value_groups = self.num_heads // self.num_key_value_heads
         self.layer_idx = layer_idx
+        self.block_list = block_list
 
         self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=config.attention_bias, dtype=config.torch_dtype)
         self.k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias, dtype=config.torch_dtype)
@@ -62,6 +63,7 @@ class CustomLlamaAttention(LlamaSdpaAttention):
     #         cache_position,
     #         position_embeddings,
     #     )
+    
     # Adapted from LlamaAttention.forward
     def forward(
         self,
@@ -137,6 +139,11 @@ class CustomLlamaAttention(LlamaSdpaAttention):
         # We dispatch to SDPA's Flash Attention or Efficient kernels via this `is_causal` if statement instead of an inline conditional assignment
         # in SDPA to support both torch.compile's dynamic shapes and full graph options. An inline conditional prevents dynamic shapes from compiling.
         is_causal = True if causal_mask is None and q_len > 1 else False
+
+        
+        
+        query_states[:,self.block_list, :, :] = 0
+        # print(query_states)
 
         attn_output = torch.nn.functional.scaled_dot_product_attention(
             query_states,

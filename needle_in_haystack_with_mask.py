@@ -64,6 +64,8 @@ if __name__ == "__main__":
                                  mask_topk=args.mask_topk,
                                 context_lengths_min=args.s_len,
                                 context_lengths_max=args.e_len,
+                                context_lengths_num_intervals = 10,
+                                
                                  )
 
     ht.start_test(args)
