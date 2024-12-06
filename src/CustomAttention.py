@@ -21,7 +21,7 @@ from transformers.models.llama.modeling_llama import (
 
 )
 class CustomLlamaAttention(LlamaSdpaAttention):
-    def __init__(self, config, layer_idx, block_list):
+    def __init__(self, config, layer_idx, block_list=[]):
         super().__init__(config, layer_idx)
         # Add your custom initialization or override methods here
         self.num_heads = config.num_attention_heads
@@ -79,10 +79,10 @@ class CustomLlamaAttention(LlamaSdpaAttention):
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         if output_attentions:
             # TODO: Improve this warning with e.g. `model.config.attn_implementation = "manual"` once this is implemented.
-            logger.warning_once(
-                "LlamaModel is using LlamaSdpaAttention, but `torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to the manual attention implementation, "
-                'but specifying the manual implementation will be required from Transformers version v5.0.0 onwards. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
-            )
+            # logger.warning_once(
+            #     "LlamaModel is using LlamaSdpaAttention, but `torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to the manual attention implementation, "
+            #     'but specifying the manual implementation will be required from Transformers version v5.0.0 onwards. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
+            # )
             return super().forward(
                 hidden_states=hidden_states,
                 attention_mask=attention_mask,

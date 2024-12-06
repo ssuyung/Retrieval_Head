@@ -48,6 +48,7 @@ ht = LLMNeedleHaystackTester(model_name=model_name,
                             save_results=True,
                             context_lengths_min=args.s_len,
                             context_lengths_max=args.e_len,
+                            last_layer_kv_len=16,
                             # haystack_dir="/content/drive/MyDrive/retrieval_head/haystack_for_detect",
                             # context_lengths_num_intervals = 3,
                             # document_depth_percent_max = 3

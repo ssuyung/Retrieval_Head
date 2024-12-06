@@ -3,12 +3,7 @@ import glob
 import json
 from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM, AutoConfig
 import sys
-# sys.path.append("./faiss_attn/")
-# from src.modeling_llama import LlamaForCausalLM
-# from src.modeling_qwen2 import Qwen2ForCausalLM
-# from src.modeling_mixtral import MixtralForCausalLM
-# from src.modeling_mistral import MistralForCausalLM
-# from src.modeling_phi3 import Phi3ForCausalLM
+from src.CustomAttention import CustomLlamaAttention
 import numpy as np
 import argparse
 from rouge_score import rouge_scorer
@@ -16,6 +11,7 @@ from datetime import datetime, timezone
 from collections import defaultdict
 import time
 import torch
+from peft import PeftModel, PeftConfig
 
 def reset_rope(model, model_max_train_len, scaling_factor):
     for l in model.model.layers:
@@ -50,7 +46,8 @@ class LLMNeedleHaystackTester:
                 save_contexts = True,
                 final_context_length_buffer = 200,
                 seconds_to_sleep_between_completions = None,
-                print_ongoing_status = True):
+                print_ongoing_status = True,
+                last_layer_kv_len=8):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
         :param haystack_dir: The directory of text files to use as background context (or a haystack) in which the needle is to be found. Default is Paul Graham Essays.
@@ -94,6 +91,7 @@ class LLMNeedleHaystackTester:
         self.scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
         self.testing_results = []
         self.head_counter = defaultdict(list)
+        self.last_layer_kv_len = last_layer_kv_len
         if("/" in model_name):
             self.model_version = model_name.split("/")[-1]
         else: self.model_version = model_name
@@ -132,9 +130,22 @@ class LLMNeedleHaystackTester:
         
         self.model_to_test = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype=torch.bfloat16  # Use bfloat16 for better memory efficiency
+            torch_dtype=torch.bfloat16,  # Use bfloat16 for better memory efficiency
+            attn_implementation="eager"
         ).to(device).eval()
+        config.num_key_value_heads = self.last_layer_kv_len
+        self.model_to_test.model.layers[15].self_attn = CustomLlamaAttention(config, 15).to(device)
         print("Model's device: ", self.model_to_test.device)  
+
+        
+        # Load the PEFT model configuration
+        peft_model_dir = "./results/model/output_peft_model_g=16_e=3"  # Directory where PEFT weights were saved
+        # peft_config = PeftConfig.from_pretrained(peft_model_dir)
+
+
+        # Load the PEFT weights into the base model
+        self.model_to_test = PeftModel.from_pretrained(self.model_to_test, peft_model_dir).to(device)
+        print(self.model_to_test)
 
         if 'llama-2-7b-80k' in self.model_version:
             scaling_factor = 10
@@ -454,7 +465,7 @@ class LLMNeedleHaystackTester:
                 self.print_start_test_summary()
             self.run_test(args)
         if os.path.exists(f"head_score/{self.model_version}.json"):
-            with open(f"./head_score/{self.model_version}.json", "r") as file:
+            with open(f"./head_score/{self.model_version}_{self.last_layer_kv_len}.json", "r") as file:
                 head_counter = json.loads(file.readline())
             for k,v in head_counter.items():
                 self.head_counter[k] += v

@@ -4,6 +4,7 @@ import json
 from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM, AutoConfig
 import sys
 import random
+import copy
 from src.CustomAttention import CustomLlamaAttention
 # sys.path.append("./faiss_attn/")
 # from src.modeling_llama import LlamaForCausalLM
@@ -53,7 +54,8 @@ class LLMNeedleHaystackTester:
                  save_contexts = True,
                  final_context_length_buffer = 200,
                  seconds_to_sleep_between_completions = None,
-                 print_ongoing_status = True):
+                 print_ongoing_status = True,
+                 head_score_path = "head_score"):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
         :param haystack_dir: The directory of text files to use as background context (or a haystack) in which the needle is to be found. Default is Paul Graham Essays.
@@ -155,13 +157,13 @@ class LLMNeedleHaystackTester:
         if self.mask_topk!=0:
             if model_name=='Mistral-7B-Instruct-v0.2':
                 model_name = "Mistral-7B-v0.2-hf"
-            with open(f"head_score/{model_name}.json", "r") as file:
+            with open(f"{head_score_path}/{model_name}.json", "r") as file:
                 stable_block_list =  json.loads(file.readline())
             stable_block_list = [(l[0], np.mean(l[1])) for l in stable_block_list.items()]
-            stable_block_list = sorted(stable_block_list, key=lambda x: x[1], reverse=True) 
+            stable_block_list = sorted(stable_block_list, key=lambda x: x[1], reverse=False) 
             self.block_list = [[int(ll) for ll in l[0].split("-")] for l in stable_block_list][:self.mask_topk]
             if self.mask_topk > 0:
-                print(f"masking out top {self.mask_topk} retrieval heads")
+                print(f"masking out bottom {self.mask_topk} retrieval heads")
             else:
                 print(f"masking out random {-self.mask_topk}  heads")
         else:
@@ -171,8 +173,14 @@ class LLMNeedleHaystackTester:
         for b in self.block_list:
             if b[0] in blk_ls: blk_ls[b[0]].append(b[1])
             else: blk_ls[b[0]] = [b[1]]
+
+        # Replace layers containing the 
         for k, v in blk_ls.items():
+            new_par = self.model_to_test.model.layers[k].self_attn.state_dict()
             self.model_to_test.model.layers[k].self_attn = CustomLlamaAttention(config, layer_idx=k, block_list=v).to(device)
+            print(self.model_to_test.model.layers[k].self_attn.load_state_dict(copy.deepcopy(new_par)))
+
+        print(self.model_to_test)
     def logistic(self, x, L=100, x0=50, k=.1):
         if x == 0:
             return 0
@@ -260,7 +268,7 @@ class LLMNeedleHaystackTester:
         # Go generate the required length context and place your needle statement in
         if self.mask_topk > 0:
             block_list = self.block_list[:self.mask_topk]
-            save_name = f"{self.model_version}_block_top{self.mask_topk}"
+            save_name = f"{self.model_version}_block_bottom{self.mask_topk}"
         elif self.mask_topk == 0:
             block_list = None
             save_name = self.model_version

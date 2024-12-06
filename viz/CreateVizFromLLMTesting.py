@@ -8,7 +8,7 @@ import os
 import glob
 
 # Path to the directory containing JSON results
-model_name = 'Llama-3.2-1B-Instruct'
+model_name = 'Llama-3.2-1B-Instruct_block_top30'
 folder_path = f'../results/graph/{model_name}/'  # Replace with your folder path
 
 # Using glob to find all json files in the directory

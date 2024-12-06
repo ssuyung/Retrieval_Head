@@ -1,1 +1,2 @@
-*.json
+results/graph/*
+results/model/*

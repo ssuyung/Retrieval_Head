@@ -65,7 +65,7 @@ if __name__ == "__main__":
                                 context_lengths_min=args.s_len,
                                 context_lengths_max=args.e_len,
                                 context_lengths_num_intervals = 10,
-                                
+                                head_score_path = "head_score"
                                  )
 
     ht.start_test(args)
